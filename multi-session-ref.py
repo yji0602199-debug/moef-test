@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import tempfile
 import uuid
@@ -27,21 +28,26 @@ from supabase import Client, create_client
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _ENV_PATH = _REPO_ROOT / ".env"
 _LOG_DIR = _REPO_ROOT / "logs"
-_LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # --- 로깅 (ref.txt: ERROR/WARNING만, HTTP 로그 억제) ---
 for _name in ("httpx", "httpcore", "urllib3", "openai", "langchain", "langchain_openai"):
     logging.getLogger(_name).setLevel(logging.WARNING)
-logging.basicConfig(
-    level=logging.WARNING,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
+_log_handlers: list[logging.Handler] = [logging.StreamHandler()]
+try:
+    _LOG_DIR.mkdir(parents=True, exist_ok=True)
+    _log_handlers.insert(
+        0,
         logging.FileHandler(
             _LOG_DIR / f"chatbot_{datetime.now():%Y%m%d}.log",
             encoding="utf-8",
         ),
-        logging.StreamHandler(),
-    ],
+    )
+except OSError:
+    pass
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=_log_handlers,
 )
 _log = logging.getLogger("multi_session_ref")
 
